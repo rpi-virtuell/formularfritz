@@ -1,0 +1,1547 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>AMB Metadaten Editor</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<style>
+body {
+  font-family: sans-serif;
+  margin: 2rem;
+  max-width: 1100px;
+}
+
+h1, h2 {
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 0.25rem;
+}
+
+fieldset {
+  border: 1px solid #ccc;
+  padding: 1rem;
+  margin-bottom: 1.2rem;
+}
+
+legend {
+  font-weight: bold;
+}
+
+label {
+  display: block;
+  margin-top: 0.35rem;
+}
+
+input[type="text"],
+input[type="url"],
+textarea,
+select {
+  width: 100%;
+  padding: 0.4rem;
+}
+
+button {
+  padding: 0.6rem 1.2rem;
+  font-size: 1rem;
+  margin-right: 1rem;
+}
+
+pre {
+  background: #f5f5f5;
+  padding: 1rem;
+  white-space: pre-wrap;
+}
+
+.help {
+  font-size: 0.9rem;
+  color: #555;
+}
+
+/* -------- Keywords UI -------- */
+
+.keyword-group-header {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+
+.keyword-toggle {
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin-right: 0.5rem;
+}
+
+.kw-parent-label {
+  font-weight: bold;
+  font-size: 1.05rem;
+}
+
+.keyword-children {
+  margin-left: 1.5rem;
+  margin-top: 0.4rem;
+  display: none;
+}
+
+.keyword-group.open .keyword-children {
+  display: block;
+}
+
+/* -------- Learning Resource Type UI -------- */
+
+.lrt-group-header {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  position: relative;
+}
+
+.lrt-toggle {
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin-right: 0.5rem;
+  transition: transform 0.2s;
+}
+
+.lrt-parent-label {
+  font-weight: bold;
+  font-size: 1.05rem;
+  flex-grow: 1;
+}
+
+/* Pfeil anzeigen, wenn Unterpunkte vorhanden */
+.lrt-group.has-children .lrt-toggle::after {
+  content: "▼";
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: transform 0.2s;
+}
+
+/* Pfeil rotieren bei offenem Menü */
+.lrt-group.open.has-children .lrt-toggle::after {
+  transform: translateY(-50%) rotate(180deg);
+}
+
+/* Kein Pfeil bei Menüs ohne Unterpunkte */
+.lrt-group.no-children .lrt-toggle::after {
+  display: none;
+}
+
+/* Markierung für Menüs mit Unterpunkten */
+.lrt-group.has-children .lrt-parent-label::after {
+  content: " ▼";
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+/* Keine Markierung bei Menüs ohne Unterpunkte */
+.lrt-group.no-children .lrt-parent-label::after {
+  display: none;
+}
+
+.lrt-children {
+  margin-left: 1.5rem;
+  margin-top: 0.4rem;
+  display: none;
+}
+
+.lrt-group.open .lrt-children {
+  display: block;
+}
+
+/* -------- Audience UI -------- */
+.audience-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+}
+
+.audience-item input[type="checkbox"] {
+  margin-right: 0.5rem;
+}
+
+.audience-item label {
+  margin: 0;
+  flex-grow: 1;
+}
+
+/* -------- Relations UI -------- */
+.relations-field {
+  margin-bottom: 1rem;
+}
+
+.relations-field textarea {
+  min-height: 100px;
+}
+
+/* -------- Competencies UI -------- */
+.competency-group-header {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background-color: #e8f4f8;
+  border-radius: 4px;
+  position: relative;
+}
+
+.competency-toggle {
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin-right: 0.5rem;
+  transition: transform 0.2s;
+}
+
+.competency-parent-label {
+  font-weight: bold;
+  font-size: 1.05rem;
+  flex-grow: 1;
+}
+
+.competency-children {
+  margin-left: 1.5rem;
+  margin-top: 0.4rem;
+  display: none;
+}
+
+.competency-group.open .competency-children {
+  display: block;
+}
+
+.competency-note {
+  background-color: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: #856404;
+}
+</style>
+</head>
+
+<body>
+
+<h1>AMB Metadaten Editor</h1>
+
+<div id="loading">Lade Konfiguration...</div>
+
+<form onsubmit="return false;" style="display:none;">
+
+<h2>Allgemein</h2>
+
+<fieldset>
+  <legend>@context *</legend>
+  <label>
+    Sprache
+    <select id="context-language">
+      <option value="de" selected>Deutsch</option>
+      <option value="en">Englisch</option>
+    </select>
+  </label>
+  <label>
+    <input type="checkbox" id="context-schemaorg">
+    schema.org ergänzen
+  </label>
+</fieldset>
+
+<fieldset>
+  <legend>Ressourcen-ID *</legend>
+  <input type="url" id="amb-id">
+</fieldset>
+
+<fieldset>
+  <legend>Art der Bildungsressource *</legend>
+  <label><input type="checkbox" checked disabled> LearningResource</label>
+</fieldset>
+
+<fieldset>
+  <legend>Titel *</legend>
+  <input type="text" id="amb-name">
+</fieldset>
+
+<fieldset>
+  <legend>Beschreibung</legend>
+  <textarea id="amb-description" rows="4"></textarea>
+</fieldset>
+
+<!-- ========= Neue Felder hinzufügen ========= -->
+<h2>Datum</h2>
+
+<fieldset>
+  <legend>Erstellungsdatum (dateCreated)</legend>
+  <input type="date" id="date-created">
+</fieldset>
+
+<fieldset>
+  <legend>Veröffentlichungsdatum (datePublished)</legend>
+  <input type="date" id="date-published">
+</fieldset>
+
+<fieldset>
+  <legend>Änderungsdatum (dateModified)</legend>
+  <input type="date" id="date-modified">
+</fieldset>
+
+<h2>Veröffentlicher</h2>
+
+<fieldset>
+  <legend>Veröffentlicher (publisher)</legend>
+  <label>
+    Typ
+    <select id="publisher-type">
+      <option value="Organization">Organisation</option>
+      <option value="Person">Person</option>
+    </select>
+  </label>
+  
+  <label>
+    Name *
+    <input type="text" id="publisher-name">
+  </label>
+  
+  <label>
+    Identifier (ORCID, GND, ROR, Wikidata …)
+    <input type="url" id="publisher-id">
+  </label>
+</fieldset>
+
+<h2>Zielgruppe</h2>
+
+<fieldset>
+  <legend>Zielgruppe (audience)</legend>
+  <p class="help">
+    Zielgruppe der Bildungsressource gemäß LRMI Educational Audience Roles.
+  </p>
+  <div id="audience-container"></div>
+</fieldset>
+
+
+<!-- ========= Sprache ========= -->
+
+<h2>Sprache der Bildungsressource</h2>
+
+<fieldset>
+  <legend>inLanguage</legend>
+
+  <p class="help">
+    Sprache(n), in der die Bildungsressource vorliegt
+    (gemäß BCP47, z. B. <code>de</code>, <code>en</code>).
+  </p>
+
+  <label>
+    <input type="checkbox" class="in-language" value="de">
+    Deutsch (de)
+  </label>
+
+  <label>
+    <input type="checkbox" class="in-language" value="en">
+    Englisch (en)
+  </label>
+
+  <label>
+    <input type="checkbox" class="in-language" value="fr">
+    Französisch (fr)
+  </label>
+
+  <label>
+    <input type="checkbox" class="in-language" value="es">
+    Spanisch (es)
+  </label>
+
+  <label>
+    Weitere Sprachcodes (kommagetrennt)
+    <input type="text" id="inLanguage-free"
+      placeholder="z. B. it, tr, ar">
+  </label>
+</fieldset>
+
+<!-- ========= image START (NEU) ========= -->
+<fieldset>
+  <legend>Vorschaubild</legend>
+  <label>
+    Thumbnail / Vorschaubild (image)
+    <input type="url" id="amb-image"
+      placeholder="https://example.org/thumbnail.jpg">
+  </label>
+</fieldset>
+<!-- ========= image ENDE ========= -->
+
+<h2>Fach</h2>
+
+<fieldset id="religion-container">
+  <legend>Religion</legend>
+  <!-- Wird dynamisch geladen -->
+</fieldset>
+
+<h2>Schlagworte</h2>
+
+<div id="keywords-container"></div>
+
+<h2>Entstehung</h2>
+
+<fieldset>
+  <legend>Urheber:innen (creator)</legend>
+
+  <p class="help">
+    Personen oder Organisationen, die die Ressource erstellt haben.
+  </p>
+
+  <div id="creator-list"></div>
+
+  <button type="button" onclick="addCreator()">
+    + Urheber:in hinzufügen
+  </button>
+</fieldset>
+
+<!-- Kompetenzen -->
+<h2>Kompetenzen (teaches)</h2>
+<fieldset>
+  <legend>Kompetenzen, die mit der Bildungsressource vermittelt werden</legend>
+  <p class="competency-note">
+    Dieser Editor arbeitet nur mit dem Auswahlfeld 'teaches' aus dem AMB. 
+    Es wird also nicht zwischen Kompetenzen, die vermittelt werden, 
+    und Kompetenzen, die überprüft werden, unterschieden.
+  </p>
+  <p class="help">
+    Wählen Sie die relevanten Kompetenzen aus:
+  </p>
+  <div id="competency-container"></div>
+</fieldset>
+
+
+<fieldset>
+  <legend>Mitwirkende (contributor)</legend>
+
+  <p class="help">
+    Sonstige Personen oder Organisationen, die an der Ressource mitgewirkt haben
+    (z. B. Redaktion, Illustration, technische Umsetzung).
+  </p>
+
+  <div id="contributor-list"></div>
+
+  <button type="button" onclick="addContributor()">
+    + Mitwirkende:n hinzufügen
+  </button>
+</fieldset>
+
+<h2>Pädagogisch</h2>
+
+<fieldset>
+  <legend>Lernressourcentyp (learningResourceType)</legend>
+  <p class="help">
+    Art des Lernmittels, eigene Tabelle aufbauend auf HCRT und OEHRT Taxonomie.
+  </p>
+  <div id="lrt-container"></div>
+</fieldset>
+
+<h2>Relationen</h2>
+
+<fieldset>
+  <legend>isBasedOn</legend>
+  <p class="help">
+    Verweis auf eine andere Ressource, von der die beschriebene Bildungsressource ein Derivat ist.
+  </p>
+  <div class="relations-field">
+    <textarea id="is-based-on" placeholder="JSON-Objekt für isBasedOn (z.B. [{&quot;id&quot;: &quot;https://example.org/resource1&quot;, &quot;type&quot;: &quot;CreativeWork&quot;, &quot;name&quot;: &quot;Originalquelle&quot;}]"></textarea>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>isPartOf</legend>
+  <p class="help">
+    Verweis auf eine übergeordnete Ressource, zu der die beschriebene Bildungsressource gehört.
+  </p>
+  <div class="relations-field">
+    <textarea id="is-part-of" placeholder="JSON-Objekt für isPartOf (z.B. [{&quot;id&quot;: &quot;https://example.org/series1&quot;, &quot;type&quot;: &quot;Series&quot;, &quot;name&quot;: &quot;Lernreihe&quot;}]"></textarea>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>hasPart</legend>
+  <p class="help">
+    Verweis auf eine untergeordnete Ressource, die Teil der beschriebenen Bildungsressource ist.
+  </p>
+  <div class="relations-field">
+    <textarea id="has-part" placeholder="JSON-Objekt für hasPart (z.B. [{&quot;id&quot;: &quot;https://example.org/unit1&quot;, &quot;type&quot;: &quot;CreativeWork&quot;, &quot;name&quot;: &quot;Untereinheit&quot;}]"></textarea>
+  </div>
+</fieldset>
+
+<button onclick="generate()">JSON erzeugen</button>
+<button onclick="downloadJSON()">JSON herunterladen</button>
+
+</form>
+
+<h2>Erzeugtes JSON</h2>
+<pre id="output"></pre>
+
+<script>
+/* ---------- Competency Daten ---------- */
+
+const competencyGroups = {
+  "Wahrnehmen und Beschreiben - die Lernenden können...": [
+    "eigene Erlebnisse, Erfahrungen und Gefühle wahrnehmen und sie zum Ausdruck bringen",
+    "die Schöpfung in ihrer Vielfalt und die Einmaligkeit des Menschen mit seinen Möglichkeiten und Grenzen wahrnehmen und beschreiben",
+    "Gestaltungs- und Handlungsräume für einen verantwortungsvollen Umgang mit sich und der Welt wahrnehmen und beschreiben",
+    "eigene Gottesvorstellungen beschreiben"
+  ],
+  "Fragen und Begründen - die Lernenden können...": [
+    "nach Entstehung, Grund und Sinn der Welt fragen und mögliche Antworten begründen",
+    "nach Grunderfahrungen menschlichen Lebens fragen und Zusammenhänge zum eigenen Leben herstellen",
+    "nach der eigenen Religionszugehörigkeit fragen und sie ansatzweise begründen"
+  ],
+  "Deuten und verstehen - die Lernenden können...": [
+    "die Welt und den Menschen als Gottes Schöpfung deuten",
+    "Gottesvorstellungen der Bibel deutend beschreiben",
+    "Geschichten der Bibel aus Altem Testament und Neuem Testament als Erfahrungen von Menschen mit Gott einordnen und deuten",
+    "elementaren Ausdrucksformen religiöser Praxis erklären und deuten"
+  ],
+  "Kommunizieren und Anteil nehmen - die Lernenden können...": [
+    "elementare religiöse Sprach- und Ausdrucksformen anwenden",
+    "Möglichkeiten verantwortungsvollen Umgangs miteinander kommunizieren und Anteil nehmen am Leben der anderen",
+    "über die eigene Religion und andere Religionen sprechen",
+    "Mitmenschen in Toleranz und Respekt begegnen"
+  ],
+  "Ausdrücken und gestalten - die Lernenden können...": [
+    "Inhalte des Faches gestalterisch zum Ausdruck bringen",
+    "christliche Feste und Feiern im schulischen Leben mitgestalten"
+  ],
+  "Handeln und teilhaben - die Lernenden können...": [
+    "im Umgang mit der Schöpfung und dem Mitmenschen verantwortungsvoll handeln",
+    "an religiös bedeutsamen Vorhaben des Schullebens partizipieren"
+  ]
+};
+
+/* ---------- Render Competency Groups ---------- */
+
+const competencyContainer = document.getElementById("competency-container");
+
+for (const [parent, children] of Object.entries(competencyGroups)) {
+  const group = document.createElement("div");
+  group.className = "competency-group";
+
+  group.innerHTML = `
+    <div class="competency-group-header">
+      <span class="competency-toggle">▶</span>
+      <label class="competency-parent-label">
+        <input type="checkbox" class="competency-parent" value="${parent}">
+        ${parent}
+      </label>
+    </div>
+    <div class="competency-children"></div>
+  `;
+
+  const childContainer = group.querySelector(".competency-children");
+
+  children.forEach(c => {
+    childContainer.innerHTML += `
+      <label>
+        <input type="checkbox" class="competency-child"
+          data-parent="${parent}" value="${c}">
+        ${c}
+      </label>`;
+  });
+
+  competencyContainer.appendChild(group);
+}
+
+/* ---------- Accordion & Logik für Competencies ---------- */
+
+document.addEventListener("click", e => {
+  if (e.target.closest(".competency-group-header")) {
+    const group = e.target.closest(".competency-group");
+    group.classList.toggle("open");
+    group.querySelector(".competency-toggle").textContent =
+      group.classList.contains("open") ? "▼" : "▶";
+  }
+});
+
+document.addEventListener("change", e => {
+  if (e.target.classList.contains("competency-child") && e.target.checked) {
+    const parent = e.target.dataset.parent;
+    document.querySelector(`.competency-parent[value="${parent}"]`).checked = true;
+  }
+});
+
+/* ---------- Audience Daten ---------- */
+
+const audienceOptions = [
+  "Lehrkraft",
+  "Schüler_innen",
+  "Eltern",
+  "Administration/Schulverwaltung",
+  "Mentor_in (z.B. Patenschaftsprogramme ältere → jüngere Schüler:innen; Referendarsausbildung; Praktikumsbegleitung)",
+  "Bildungseinrichtung",
+  "Bildungsfachkraft (z.B. Schulsozialarbeiter_in; Beratungslehrer_in; Schulpsycholog_in; Inklusionshelfer_in; Fachberater_in; Qualitätsbeauftragte_r)"
+];
+
+/* ---------- Render Audience Options ---------- */
+
+const audienceContainer = document.getElementById("audience-container");
+
+function renderAudienceOptions() {
+  audienceContainer.innerHTML = '';
+  
+  audienceOptions.forEach(option => {
+    const div = document.createElement("div");
+    div.className = "audience-item";
+    
+    const id = option.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+    
+    div.innerHTML = `
+      <label>
+        <input type="checkbox" class="audience-checkbox" value="${option}">
+        ${option}
+      </label>
+    `;
+    
+    audienceContainer.appendChild(div);
+  });
+}
+
+// Initial rendering
+renderAudienceOptions();
+
+/* ---------- Learning Resource Type Daten ---------- */
+
+const learningResourceTypes = {
+  "Unterrichtsplanung": [
+    "Stundenentwurf",
+    "Unterrichtsbaustein",
+    "Unterrichtsidee",
+    "Unterrichtsreihe",
+    "Go & Teach",
+    "Unterrichtseinheit und -sequenz",
+    "Projekt"
+  ],
+  "Arbeitsblatt": [],
+  "Textbaustein zum Wiederverwenden": [
+    "Anforderungssituation",
+    "Arbeits-/Rechercheauftrag",
+    "Darstellung Sachverhalt",
+    "Definition",
+    "Merksatz",
+    "Fakt",
+    "Beispiel"
+  ],
+  "Biblische Geschichte": [],
+  "Quelle": [],
+  "Erzählung / Geschichte": [],
+  "bebilderte Geschichte": [],
+  "Liedtext/Musiknoten": [],
+  "Audio": [
+    "Erklär-Audio",
+    "Sprach- und Lernaudio",
+    "Radio, Podcastfolge und Interview",
+    "Klang und Tonaufnahme",
+    "Musik",
+    "Vortrag (Audio-Aufzeichnung / Lesung)",
+    "Hörverstehen"
+  ],
+  "Bild": [
+    "Veranschaulichung, Schaubild, Tafelbild",
+    "Mal- und Bastelvorlage",
+    "Foto",
+    "Clipart, Pictogramm, Icon",
+    "Cartoon, Comic",
+    "Karte",
+    "Poster und Plakat",
+    "Gemälde, Kunstwerke und Zeichnungen",
+    "Graph, Diagramm und Charts"
+  ],
+  "Video": [
+    "Kurzfilm",
+    "Film",
+    "Lern- und Übungsvideo",
+    "Erklärvideo und gefilmtes Experiment",
+    "Vortrags- und Unterrichtsaufzeichnung"
+  ],
+  "Interaktives Medium": [
+    "Lernpfad",
+    "Adaptives Lernangebot",
+    "Simulation",
+    "Virtual Reality",
+    "Augmented Reality",
+    "Webseite",
+    "Wiki",
+    "Game"
+  ],
+  "Spiel": [  
+    "Aufwärm-/Kennenlernspiel",
+    "Lernspiel / Spielanleitung",
+    "Rollenspiel"
+  ],
+  "Stationenlernen": [],
+  "Übung, Lernkontrolle": [
+    "Lösungs(beispiel) und Erwartungshorizont",
+    "Selbsttest-Aufgabe",
+    "Klausur, Klassenarbeit, Test",
+    "Checkliste"
+  ],
+  "Evaluationsbogen": [],
+  "Fragebogen und Umfrage": [],
+  "Nachschlagewerk, Lexikon, Lexikonartikel": [],
+  "Präsentation": [],
+  "Lehrbuch": [],
+  "Sachinformation/Grundlagentext": []
+};
+
+const lrtContainer = document.getElementById("lrt-container");
+
+/* ---------- Render Learning Resource Types ---------- */
+
+for (const [parent, children] of Object.entries(learningResourceTypes)) {
+  const group = document.createElement("div");
+  group.className = "lrt-group";
+
+   // Prüfen, ob Unterpunkte vorhanden sind
+  const hasChildren = children.length > 0;
+  if (hasChildren) {
+    group.classList.add("has-children");
+  } else {
+    group.classList.add("no-children");
+  }
+
+  group.innerHTML = `
+    <div class="lrt-group-header">
+      <span class="lrt-toggle">▶</span>
+      <label class="lrt-parent-label">
+        <input type="checkbox" class="lrt-parent" value="${parent}">
+        ${parent}
+      </label>
+    </div>
+    <div class="lrt-children"></div>
+  `;
+
+  const childContainer = group.querySelector(".lrt-children");
+
+  children.forEach(c => {
+    childContainer.innerHTML += `
+      <label>
+        <input type="checkbox" class="lrt-child"
+          data-parent="${parent}" value="${c}">
+        ${c}
+      </label>`;
+  });
+
+  lrtContainer.appendChild(group);
+}
+
+/* ---------- Accordion & Logik für LRT ---------- */
+
+document.addEventListener("click", e => {
+  if (e.target.closest(".lrt-group-header")) {
+    const group = e.target.closest(".lrt-group");
+    group.classList.toggle("open");
+    group.querySelector(".lrt-toggle").textContent =
+      group.classList.contains("open") ? "▼" : "▶";
+  }
+});
+
+document.addEventListener("change", e => {
+  if (e.target.classList.contains("lrt-child") && e.target.checked) {
+    const parent = e.target.dataset.parent;
+    document.querySelector(`.lrt-parent[value="${parent}"]`).checked = true;
+  }
+});
+
+/* ---------- Keyword Daten ---------- */
+
+const keywordGroups = {
+  "Gott": ["Gottesbilder", "Glauben / Zweifel", "Trinität"],
+  "Mensch, Gemeinschaft, Handeln": [
+    "Zehn Gebote","Gerechtigkeit","Frieden","Schöpfungsbewahrung",
+    "Menschenwürde","Existenzielle Fragen / Grundfragen des Lebens","Diakonie"
+  ],
+  "Schöpfung": [],
+  "Jesus Christus": [
+    "Geschichtlicher Jesus / Leben und Umwelt Jesu",
+    "Geglaubter Christus / Hoheitsbezeichnungen",
+    "Botschaft und Handeln Jesu","Passion","Auferstehung","Nachfolge"
+  ],
+  "Kirche / Gemeinde": [
+    "Kirchenräume","Gemeindeleben","Ämter","Gottesdienst",
+    "Abendmahl","Konfessionen"
+  ],
+  "Kirchenjahr / Feste": [
+    "Abschied / Silvester","Neubeginn / Neujahr","Dreikönige",
+    "Palmsonntag","Gründonnerstag","Karfreitag","Ostern",
+    "Himmelfahrt","Pfingsten","Fronleichnam","Erntedank",
+    "Advent","Weihnachten","Ewigkeitssonntag / Totensonntag"
+  ],
+  "Ausdrucksformen des Glaubens": [
+    "Gebet","Meditation","Taufe","Abendmahl",
+    "Beichte","Gottesdienst","Kasualgottesdienst","Sakramente allgemein"
+  ],
+  "Bibel": [
+    "Bibel als Text(sammlung)",
+    "Bibel als Glaubenszeugnis",
+    "Konkrete biblische Geschichten",
+    "Religiöse Symbole"
+  ],
+  "Religionen / Weltanschauungen": [
+    "Christentum","Judentum","Islam","Buddhismus",
+    "Hinduismus","Daoismus","Bahá'í",
+    "indigene Religionen","säkulare Weltanschauungen"
+  ]
+};
+
+const kc = document.getElementById("keywords-container");
+
+/* ---------- Render Keywords ---------- */
+
+for (const [parent, children] of Object.entries(keywordGroups)) {
+  const group = document.createElement("div");
+  group.className = "keyword-group";
+
+  group.innerHTML = `
+    <div class="keyword-group-header">
+      <span class="keyword-toggle">▶</span>
+      <label class="kw-parent-label">
+        <input type="checkbox" class="kw-parent" value="${parent}">
+        ${parent}
+      </label>
+    </div>
+    <div class="keyword-children"></div>
+  `;
+
+  const childContainer = group.querySelector(".keyword-children");
+
+  children.forEach(c => {
+    childContainer.innerHTML += `
+      <label>
+        <input type="checkbox" class="kw-child"
+          data-parent="${parent}" value="${c}">
+        ${c}
+      </label>`;
+  });
+
+  childContainer.innerHTML += `
+    <label>
+      Freitext
+      <input type="text" class="kw-free"
+        data-parent="${parent}" placeholder="kommagetrennt">
+    </label>`;
+
+  kc.appendChild(group);
+}
+
+/* ---------- Accordion & Logik ---------- */
+
+document.addEventListener("click", e => {
+  if (e.target.closest(".keyword-group-header")) {
+    const group = e.target.closest(".keyword-group");
+    group.classList.toggle("open");
+    group.querySelector(".keyword-toggle").textContent =
+      group.classList.contains("open") ? "▼" : "▶";
+  }
+});
+
+document.addEventListener("change", e => {
+  if (e.target.classList.contains("kw-child") && e.target.checked) {
+    const parent = e.target.dataset.parent;
+    document.querySelector(`.kw-parent[value="${parent}"]`).checked = true;
+  }
+});
+
+/* ---------- Import Funktion ---------- */
+
+// Datei-Upload-Event Listener
+document.getElementById('json-file').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  const importBtn = document.getElementById('import-btn');
+  
+  if (file && file.name.endsWith('.json')) {
+    importBtn.disabled = false;
+  } else {
+    importBtn.disabled = true;
+  }
+});
+
+function importJSON() {
+  const fileInput = document.getElementById('json-file');
+  const file = fileInput.files[0];
+  
+  if (!file) {
+    alert('Bitte wählen Sie eine JSON-Datei aus.');
+    return;
+  }
+  
+  const reader = new FileReader();
+  
+  reader.onload = function(e) {
+    try {
+      const jsonData = JSON.parse(e.target.result);
+      
+      // Vorhandene Daten im Formular behalten und nur fehlende Felder ausfüllen
+      populateFormFromJSON(jsonData);
+      
+      alert('JSON erfolgreich importiert!');
+      
+      // Datei-Eingabefeld zurücksetzen
+      fileInput.value = '';
+      document.getElementById('import-btn').disabled = true;
+      
+    } catch (error) {
+      console.error('Fehler beim Parsen der JSON-Datei:', error);
+      alert('Fehler beim Import: Ungültiges JSON-Format');
+    }
+  };
+  
+  reader.onerror = function() {
+    alert('Fehler beim Lesen der Datei');
+  };
+  
+  reader.readAsText(file);
+}
+
+function populateFormFromJSON(data) {
+  // Allgemeine Felder
+  if (data.id) document.getElementById('amb-id').value = data.id;
+  if (data.name) document.getElementById('amb-name').value = data.name;
+  if (data.description) document.getElementById('amb-description').value = data.description;
+  
+  // Context und Schema.org
+  if (data['@context']) {
+    const context = data['@context'];
+    if (Array.isArray(context)) {
+      const schemaorgIndex = context.indexOf('https://schema.org');
+      if (schemaorgIndex !== -1) {
+        document.getElementById('context-schemaorg').checked = true;
+      }
+      
+      // Sprache ermitteln
+      const languageObj = context.find(item => typeof item === 'object' && item['@language']);
+      if (languageObj && languageObj['@language']) {
+        document.getElementById('context-language').value = languageObj['@language'];
+      }
+    }
+  }
+  
+  // Datum-Felder
+  if (data.dateCreated) document.getElementById('date-created').value = data.dateCreated;
+  if (data.datePublished) document.getElementById('date-published').value = data.datePublished;
+  if (data.dateModified) document.getElementById('date-modified').value = data.dateModified;
+  
+  // Publisher
+  if (data.publisher) {
+    const publisher = data.publisher;
+    if (publisher.type) document.getElementById('publisher-type').value = publisher.type;
+    if (publisher.name) document.getElementById('publisher-name').value = publisher.name;
+    if (publisher.id) document.getElementById('publisher-id').value = publisher.id;
+  }
+  
+  // inLanguage
+  if (data.inLanguage) {
+    const languages = Array.isArray(data.inLanguage) ? data.inLanguage : [data.inLanguage];
+    languages.forEach(lang => {
+      const checkbox = document.querySelector(`.in-language[value="${lang}"]`);
+      if (checkbox) checkbox.checked = true;
+    });
+    
+    // Freitextfeld
+    if (languages.length > 0) {
+      const nonStandardLanguages = languages.filter(lang => 
+        !['de', 'en', 'fr', 'es'].includes(lang)
+      );
+      if (nonStandardLanguages.length > 0) {
+        document.getElementById('inLanguage-free').value = nonStandardLanguages.join(', ');
+      }
+    }
+  }
+  
+  // Image
+  if (data.image) document.getElementById('amb-image').value = data.image;
+  
+  // Keywords
+  if (data.keywords) {
+    const keywords = Array.isArray(data.keywords) ? data.keywords : [data.keywords];
+    keywords.forEach(keyword => {
+      // Versuche, das Keyword in den Schlagwort-Gruppen zu finden
+      let found = false;
+      
+      // Prüfe Schlagworte
+      document.querySelectorAll('.kw-parent').forEach(parentCb => {
+        if (parentCb.value === keyword) {
+          parentCb.checked = true;
+          found = true;
+        }
+      });
+      
+      if (!found) {
+        // Prüfe Kinder-Schlagworte
+        document.querySelectorAll('.kw-child').forEach(childCb => {
+          if (childCb.value === keyword) {
+            childCb.checked = true;
+            const parent = childCb.dataset.parent;
+            document.querySelector(`.kw-parent[value="${parent}"]`).checked = true;
+            found = true;
+          }
+        });
+      }
+      
+      // Falls nicht gefunden, füge als Freitext hinzu
+      if (!found) {
+        // Dies ist eine vereinfachte Lösung - in einer echten Implementierung müsste man
+        // die Struktur besser analysieren
+      }
+    });
+  }
+  
+  // About (Fach)
+  if (data.about) {
+    const aboutItems = Array.isArray(data.about) ? data.about : [data.about];
+    aboutItems.forEach(item => {
+      if (item.id) {
+        const detailCheckbox = document.querySelector(`.about-detail[data-id="${item.id}"]`);
+        if (detailCheckbox) {
+          detailCheckbox.checked = true;
+        }
+      }
+    });
+  }
+  
+  // Learning Resource Type
+  if (data.learningResourceType) {
+    const lrtItems = Array.isArray(data.learningResourceType) ? data.learningResourceType : [data.learningResourceType];
+    lrtItems.forEach(item => {
+      if (item.prefLabel && item.prefLabel.de) {
+        const label = item.prefLabel.de;
+        
+        // Prüfe, ob es ein Oberbegriff ist
+        const parentCheckbox = document.querySelector(`.lrt-parent[value="${label}"]`);
+        if (parentCheckbox) {
+          parentCheckbox.checked = true;
+        } else {
+          // Prüfe, ob es ein Unterbegriff ist
+          document.querySelectorAll('.lrt-child').forEach(childCb => {
+            if (childCb.value === label) {
+              childCb.checked = true;
+              const parent = childCb.dataset.parent;
+              document.querySelector(`.lrt-parent[value="${parent}"]`).checked = true;
+            }
+          });
+        }
+      }
+    });
+  }
+  
+  // Audience
+  if (data.audience) {
+    const audienceItems = Array.isArray(data.audience) ? data.audience : [data.audience];
+    audienceItems.forEach(item => {
+      if (item.prefLabel && item.prefLabel.de) {
+        const label = item.prefLabel.de;
+        const checkbox = document.querySelector(`.audience-checkbox[value="${label}"]`);
+        if (checkbox) {
+          checkbox.checked = true;
+        }
+      }
+    });
+  }
+  
+  // Competencies
+  if (data.teaches) {
+    const competencyItems = Array.isArray(data.teaches) ? data.teaches : [data.teaches];
+    competencyItems.forEach(item => {
+      if (item.prefLabel) {
+        const label = item.prefLabel.de;
+        // Prüfe, ob es ein Oberbegriff ist
+        const parentCheckbox = document.querySelector(`.competency-parent[value="${label}"]`);
+        if (parentCheckbox) {
+          parentCheckbox.checked = true;
+        } else {
+          // Prüfe, ob es eine Beschreibung ist
+          document.querySelectorAll('.competency-child').forEach(childCb => {
+            if (childCb.value === label) {
+              childCb.checked = true;
+              const parent = childCb.dataset.parent;
+              document.querySelector(`.competency-parent[value="${parent}"]`).checked = true;
+            }
+          });
+        }
+      }
+    });
+  }
+  
+  // Relations
+  if (data.isBasedOn) {
+    document.getElementById('is-based-on').value = JSON.stringify(data.isBasedOn, null, 2);
+  }
+  if (data.isPartOf) {
+    document.getElementById('is-part-of').value = JSON.stringify(data.isPartOf, null, 2);
+  }
+  if (data.hasPart) {
+    document.getElementById('has-part').value = JSON.stringify(data.hasPart, null, 2);
+  }
+  
+  // Creator
+  if (data.creator) {
+    const creators = Array.isArray(data.creator) ? data.creator : [data.creator];
+    creators.forEach((creator, index) => {
+      if (index === 0) {
+        // Ersten Creator direkt in das erste Feld eintragen
+        if (creator.type) document.querySelector('#creator-list .creator-type').value = creator.type;
+        if (creator.name) document.querySelector('#creator-list .creator-name').value = creator.name;
+        if (creator.id) document.querySelector('#creator-list .creator-id').value = creator.id;
+        if (creator.affiliation && creator.affiliation.name) {
+          document.querySelector('#creator-list .creator-affiliation-name').value = creator.affiliation.name;
+        }
+        if (creator.affiliation && creator.affiliation.id) {
+          document.querySelector('#creator-list .creator-affiliation-id').value = creator.affiliation.id;
+        }
+      } else {
+        // Weitere Creator hinzufügen
+        addCreator();
+        const entries = document.querySelectorAll('.creator-entry');
+        const lastEntry = entries[entries.length - 1];
+        if (lastEntry) {
+          if (creator.type) lastEntry.querySelector('.creator-type').value = creator.type;
+          if (creator.name) lastEntry.querySelector('.creator-name').value = creator.name;
+          if (creator.id) lastEntry.querySelector('.creator-id').value = creator.id;
+          if (creator.affiliation && creator.affiliation.name) {
+            lastEntry.querySelector('.creator-affiliation-name').value = creator.affiliation.name;
+          }
+          if (creator.affiliation && creator.affiliation.id) {
+            lastEntry.querySelector('.creator-affiliation-id').value = creator.affiliation.id;
+          }
+        }
+      }
+    });
+  }
+  
+  // Contributor
+  if (data.contributor) {
+    const contributors = Array.isArray(data.contributor) ? data.contributor : [data.contributor];
+    contributors.forEach((contributor, index) => {
+      if (index === 0) {
+        // Ersten Contributor direkt in das erste Feld eintragen
+        if (contributor.type) document.querySelector('#contributor-list .creator-type').value = contributor.type;
+        if (contributor.name) document.querySelector('#contributor-list .creator-name').value = contributor.name;
+        if (contributor.id) document.querySelector('#contributor-list .creator-id').value = contributor.id;
+        if (contributor.affiliation && contributor.affiliation.name) {
+          document.querySelector('#contributor-list .creator-affiliation-name').value = contributor.affiliation.name;
+        }
+        if (contributor.affiliation && contributor.affiliation.id) {
+          document.querySelector('#contributor-list .creator-affiliation-id').value = contributor.affiliation.id;
+        }
+      } else {
+        // Weitere Contributor hinzufügen
+        addContributor();
+        const entries = document.querySelectorAll('.creator-entry');
+        const lastEntry = entries[entries.length - 1];
+        if (lastEntry) {
+          if (contributor.type) lastEntry.querySelector('.creator-type').value = contributor.type;
+          if (contributor.name) lastEntry.querySelector('.creator-name').value = contributor.name;
+          if (contributor.id) lastEntry.querySelector('.creator-id').value = contributor.id;
+          if (contributor.affiliation && contributor.affiliation.name) {
+            lastEntry.querySelector('.creator-affiliation-name').value = contributor.affiliation.name;
+          }
+          if (contributor.affiliation && contributor.affiliation.id) {
+            lastEntry.querySelector('.creator-affiliation-id').value = contributor.affiliation.id;
+          }
+        }
+      }
+    });
+  }
+}
+
+/* ---------- Build JSON ---------- */
+
+function buildContext() {
+  const ctx = ["https://w3id.org/kim/amb/context.jsonld"];
+  const schemaorgCheckbox = document.getElementById("context-schemaorg");
+  const languageSelect = document.getElementById("context-language");
+  
+  if (schemaorgCheckbox && schemaorgCheckbox.checked) {
+    ctx.push("https://schema.org");
+  }
+  ctx.push({ "@language": languageSelect ? languageSelect.value : "de" });
+  return ctx;
+}
+
+function buildAbout() {
+  const res = [{
+    id: "https://example.org/vocab/school-subject/religion",
+    type: "Concept",
+    prefLabel: { de: "Religion" }
+  }];
+  document.querySelectorAll(".about-detail:checked").forEach(cb => {
+    res.push({
+      id: cb.dataset.id,
+      type: "Concept",
+      prefLabel: { de: cb.dataset.label }
+    });
+  });
+  return res;
+}
+
+function buildInLanguage() {
+  const languages = [];
+  
+  // Checkboxes aus dem inLanguage-Bereich
+  document.querySelectorAll(".in-language:checked").forEach(cb => {
+    languages.push(cb.value);
+  });
+  
+  // Freitexteingabe
+  const freeInput = document.getElementById("inLanguage-free").value.trim();
+  if (freeInput) {
+    freeInput.split(",").map(v => v.trim()).filter(Boolean)
+      .forEach(lang => languages.push(lang));
+  }
+  
+  return languages.length ? languages : undefined;
+}
+
+function buildKeywords() {
+  const set = new Set();
+
+  document.querySelectorAll(".kw-parent:checked")
+    .forEach(cb => set.add(cb.value));
+
+  document.querySelectorAll(".kw-child:checked")
+    .forEach(cb => set.add(cb.value));
+
+  document.querySelectorAll(".kw-free").forEach(input => {
+    input.value.split(",").map(v => v.trim()).filter(Boolean)
+      .forEach(v => {
+        set.add(v);
+        set.add(input.dataset.parent);
+      });
+  });
+
+  return set.size ? Array.from(set) : undefined;
+}
+
+/* ===== FIX: buildCreator auf Top-Level ===== */
+
+function buildCreator() {
+  const creators = [];
+
+  document.querySelectorAll(".creator-entry").forEach(entry => {
+    const type = entry.querySelector(".creator-type").value;
+    const name = entry.querySelector(".creator-name").value.trim();
+    const id = entry.querySelector(".creator-id").value.trim();
+    const affiliationName =
+      entry.querySelector(".creator-affiliation-name").value.trim();
+    const affiliationId =
+      entry.querySelector(".creator-affiliation-id")?.value.trim();
+
+    if (!name) return;
+
+    const obj = { type, name };
+    if (id) obj.id = id;
+
+    if (type === "Person" && affiliationName) {
+      obj.affiliation = {
+        type: "Organization", 
+        name: affiliationName
+      };
+      if (affiliationId) {
+        obj.affiliation.id = affiliationId;
+      }
+    }
+
+    creators.push(obj);
+  });
+
+  return creators.length ? creators : undefined;
+}
+
+function buildContributor() {
+  const contributors = [];
+
+  document
+    .querySelectorAll("#contributor-list .creator-entry")
+    .forEach(entry => {
+      const type = entry.querySelector(".creator-type").value;
+      const name = entry.querySelector(".creator-name").value.trim();
+      const id = entry.querySelector(".creator-id").value.trim();
+      const affiliationName =
+        entry.querySelector(".creator-affiliation-name").value.trim();
+      const affiliationId =
+        entry.querySelector(".creator-affiliation-id")?.value.trim();
+
+      if (!name) return;
+
+      const obj = { type, name };
+
+      if (id) obj.id = id;
+
+      if (type === "Person" && affiliationName) {
+        obj.affiliation = {
+          type: "Organization",
+          name: affiliationName
+        };
+        if (affiliationId) {
+          obj.affiliation.id = affiliationId;
+        }
+      }
+
+      contributors.push(obj);
+    });
+
+  return contributors.length ? contributors : undefined;
+}
+
+/* ===== image Builder (NEU) ===== */
+function buildImage() {
+  const v = document.getElementById("amb-image").value.trim();
+  return v || undefined;
+}
+
+/* ===== date Builders ===== */
+function buildDateCreated() {
+  const date = document.getElementById("date-created").value.trim();
+  return date || undefined;
+}
+
+function buildDatePublished() {
+  const date = document.getElementById("date-published").value.trim();
+  return date || undefined;
+}
+
+function buildDateModified() {
+  const date = document.getElementById("date-modified").value.trim();
+  return date || undefined;
+}
+
+/* ===== publisher Builder ===== */
+function buildPublisher() {
+  const type = document.getElementById("publisher-type").value;
+  const name = document.getElementById("publisher-name").value.trim();
+  const id = document.getElementById("publisher-id").value.trim();
+  
+  if (!name) return undefined;
+  
+  const obj = { type, name };
+  if (id) obj.id = id;
+  
+  return obj;
+}
+
+/* ===== learningResourceType Builder ===== */
+function buildLearningResourceType() {
+  const selectedItems = [];
+  
+  // Oberbegriffe auswählen
+  document.querySelectorAll(".lrt-parent:checked").forEach(cb => {
+    const parent = cb.value;
+    selectedItems.push({
+      id: `https://w3id.org/kim/hcrt/${encodeURIComponent(parent.replace(/\s+/g, '-'))}`,
+      type: "Concept",
+      prefLabel: { de: parent }
+    });
+  });
+  
+  // Unterbegriffe auswählen
+  document.querySelectorAll(".lrt-child:checked").forEach(cb => {
+    const parent = cb.dataset.parent;
+    const child = cb.value;
+    selectedItems.push({
+      id: `https://w3id.org/kim/hcrt/${encodeURIComponent(parent.replace(/\s+/g, '-'))}/${encodeURIComponent(child.replace(/\s+/g, '-'))}`,
+      type: "Concept",
+      prefLabel: { de: child }
+    });
+  });
+  
+  return selectedItems.length ? selectedItems : undefined;
+}
+
+/* ===== audience Builder ===== */
+function buildAudience() {
+  const selectedItems = [];
+  
+  // Checkbox-Auswahl
+  document.querySelectorAll(".audience-checkbox:checked").forEach(cb => {
+    const label = cb.value;
+    selectedItems.push({
+      id: `https://schema.org/audienceType/${encodeURIComponent(label.replace(/\s+/g, '-'))}`,
+      type: "Concept",
+      prefLabel: { de: label }
+    });
+  });
+  
+  return selectedItems.length ? selectedItems : undefined;
+}
+
+/* ===== competencies Builder ===== */
+function buildCompetencies() {
+  const selectedItems = [];
+  
+  // Oberbegriffe auswählen
+  document.querySelectorAll(".competency-parent:checked").forEach(cb => {
+    const parent = cb.value;
+    // Extrahiere nur den Text vor dem Doppelpunkt
+    const labelText = parent.split(' - ')[0];
+    selectedItems.push({
+      id: `https://w3id.org/kim/amb/competency/${encodeURIComponent(labelText.replace(/\s+/g, '-'))}`,
+      prefLabel: { de: parent }
+    });
+  });
+  
+  // Unterbegriffe auswählen
+  document.querySelectorAll(".competency-child:checked").forEach(cb => {
+    const parent = cb.dataset.parent;
+    // Extrahiere nur den Text vor dem Doppelpunkt
+    const labelText = parent.split(' - ')[0];
+    selectedItems.push({
+      id: `https://w3id.org/kim/amb/competency/${encodeURIComponent(labelText.replace(/\s+/g, '-'))}/${encodeURIComponent(cb.value.replace(/\s+/g, '-'))}`,
+      prefLabel: { de: cb.value }
+    });
+  });
+  
+  return selectedItems.length ? selectedItems : undefined;
+}
+
+/* ===== relations Builders ===== */
+function buildIsBasedOn() {
+  const textarea = document.getElementById("is-based-on");
+  const value = textarea.value.trim();
+  
+  if (!value) return undefined;
+  
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch (e) {
+    console.error("Fehler beim Parsen von isBasedOn:", e);
+    return undefined;
+  }
+}
+
+function buildIsPartOf() {
+  const textarea = document.getElementById("is-part-of");
+  const value = textarea.value.trim();
+  
+  if (!value) return undefined;
+  
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch (e) {
+    console.error("Fehler beim Parsen von isPartOf:", e);
+    return undefined;
+  }
+}
+
+function buildHasPart() {
+  const textarea = document.getElementById("has-part");
+  const value = textarea.value.trim();
+  
+  if (!value) return undefined;
+  
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed : [parsed];
+  } catch (e) {
+    console.error("Fehler beim Parsen von hasPart:", e);
+    return undefined;
+  }
+}
+
+// Definiere das output Element hier
+const output = document.getElementById("output");
+
+function generate() {
+  // Korrekte Variablennamen
+  const ambId = document.getElementById("amb-id");
+  const ambName = document.getElementById("amb-name");
+  const ambDescription = document.getElementById("amb-description");
+
+  if (!ambId.value || !ambName.value)
+    return alert("Pflichtfelder fehlen.");
+
+  const json = {
+    "@context": buildContext(),
+    id: ambId.value.trim(),
+    type: ["LearningResource"],
+    name: ambName.value.trim(),
+    about: buildAbout()
+  };
+
+  // Hinzufügen der inLanguage
+  const inLang = buildInLanguage();
+  if (inLang) json.inLanguage = inLang;
+
+  // Hinzufügen der Datumsfelder
+  const dateCreated = buildDateCreated();
+  if (dateCreated) json.dateCreated = dateCreated;
+  
+  const datePublished = buildDatePublished();
+  if (datePublished) json.datePublished = datePublished;
+  
+  const dateModified = buildDateModified();
+  if (dateModified) json.dateModified = dateModified;
+
+  // Hinzufügen des Publishers
+  const publisher = buildPublisher();
+  if (publisher) json.publisher = publisher;
+
+  // Hinzufügen der Zielgruppe
+  const audience = buildAudience();
+  if (audience) json.audience = audience;
+
+  // Hinzufügen der Kompetenzen
+  const competencies = buildCompetencies();
+  if (competencies) json.teaches = competencies;
+
+  // Hinzufügen des Lernressourcentyps
+  const lrt = buildLearningResourceType();
+  if (lrt) json.learningResourceType = lrt;
+
+  // Hinzufügen der Relationen
+  const isBasedOn = buildIsBasedOn();
+  if (isBasedOn) json.isBasedOn = isBasedOn;
+  
+  const isPartOf = buildIsPartOf();
+  if (isPartOf) json.isPartOf = isPartOf;
+  
+  const hasPart = buildHasPart();
+  if (hasPart) json.hasPart = hasPart;
+
+  if (ambDescription && ambDescription.value.trim())
+    json.description = ambDescription.value.trim();
+
+  const img = buildImage();
+  if (img) json.image = img;
+
+  const kw = buildKeywords();
+  if (kw) json.keywords = kw;
+
+  const cr = buildCreator();
+  if (cr) json.creator = cr;
+
+  const co = buildContributor();
+  if (co) json.contributor = co;
+
+  output.textContent = JSON.stringify(json, null, 2);
+}
+
+
+function downloadJSON() {
+  if (!output.textContent) return;
+  const blob = new Blob([output.textContent], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "amb-metadata.json";
+  a.click();
+}
+
+</script>
+
+</body>
+</html>
+```

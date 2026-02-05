@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMB Form Editor</title>
+    <link rel="stylesheet" href="css/form-editor.css">
+</head>
+<body>
+    <div class="form-editor-container">
+        <header class="form-editor-header">
+            <img src="assets/Formular-Fritz.jpg" alt="Formular-Fritz" class="mascot">
+            <div class="header-text">
+                <h1>AMB Form Editor</h1>
+                <p>Bildungsressourcen-Metadaten erfassen und an n8n senden</p>
+            </div>
+        </header>
+
+        <!-- Config Loader -->
+        <section class="config-loader">
+            <!-- Konfiguration -->
+            <div class="loader-row">
+                <label>Formular-Konfiguration:</label>
+                <div class="input-group">
+                    <select id="config-preset" class="preset-select">
+                        <option value="">— Vorlage wählen —</option>
+                        <option value="config/form-config.md">Standard (4 Felder)</option>
+                        <option value="config/form-config-minimal.md">Minimal (nur Pflicht)</option>
+                        <option value="config/form-config-extended.md">Erweitert (10 Felder)</option>
+                        <option value="custom">Eigene URL eingeben...</option>
+                    </select>
+                    <input type="url" id="config-url" placeholder="URL zur Config-MD..." style="display: none;">
+                    <button type="button" id="load-config-btn" class="btn btn-secondary">Laden</button>
+                </div>
+            </div>
+
+            <!-- Daten -->
+            <div class="loader-row">
+                <label>Daten zum Vorausfüllen (optional):</label>
+                <div class="input-group">
+                    <select id="data-preset" class="preset-select">
+                        <option value="">— Keine Vorausfüllung —</option>
+                        <option value="data/example-entry.md">Beispiel: Reformation</option>
+                        <option value="custom">Eigene URL eingeben...</option>
+                    </select>
+                    <input type="url" id="data-url" placeholder="URL zur Daten-MD..." style="display: none;">
+                    <button type="button" id="load-data-btn" class="btn btn-secondary">Laden</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Status -->
+        <div id="status-container"></div>
+
+        <!-- Form Container -->
+        <main id="form-container">
+            <div class="loading-indicator">
+                <div class="loading-spinner"></div>
+                <span>Lade Konfiguration...</span>
+            </div>
+        </main>
+
+        <!-- JSON Preview -->
+        <section id="json-preview" class="json-preview" style="display: none;">
+            <h3>JSON Vorschau</h3>
+            <pre id="json-output"></pre>
+        </section>
+
+        <!-- Validation Results -->
+        <section id="validation-results" style="display: none;"></section>
+    </div>
+
+    <!-- Module laden -->
+    <script src="js/md-parser.js"></script>
+    <script src="js/form-generator.js"></script>
+    <script src="js/json-builder.js"></script>
+    <script src="js/api-client.js"></script>
+
+    <!-- App-Logik -->
+    <script>
+        /**
+         * AMB Form Editor - Hauptanwendung
+         */
+        (function() {
+            'use strict';
+
+            // State
+            let currentConfig = null;
+            let currentData = null;
+
+            // DOM Elements
+            const formContainer = document.getElementById('form-container');
+            const statusContainer = document.getElementById('status-container');
+            const jsonPreview = document.getElementById('json-preview');
+            const jsonOutput = document.getElementById('json-output');
+            const validationResults = document.getElementById('validation-results');
+            const configUrlInput = document.getElementById('config-url');
+            const dataUrlInput = document.getElementById('data-url');
+            const configPreset = document.getElementById('config-preset');
+            const dataPreset = document.getElementById('data-preset');
+
+            /**
+             * Gibt die aktuelle Config-URL zurück (aus Dropdown oder Input)
+             */
+            function getConfigUrl() {
+                const preset = configPreset.value;
+                if (preset === 'custom') {
+                    return configUrlInput.value.trim();
+                }
+                return preset;
+            }
+
+            /**
+             * Gibt die aktuelle Data-URL zurück (aus Dropdown oder Input)
+             */
+            function getDataUrl() {
+                const preset = dataPreset.value;
+                if (preset === 'custom') {
+                    return dataUrlInput.value.trim();
+                }
+                return preset;
+            }
+
+            /**
+             * Toggle für Custom-URL-Input
+             */
+            function setupPresetToggles() {
+                configPreset.addEventListener('change', () => {
+                    configUrlInput.style.display = configPreset.value === 'custom' ? 'block' : 'none';
+                    if (configPreset.value === 'custom') {
+                        configUrlInput.focus();
+                    }
+                });
+
+                dataPreset.addEventListener('change', () => {
+                    dataUrlInput.style.display = dataPreset.value === 'custom' ? 'block' : 'none';
+                    if (dataPreset.value === 'custom') {
+                        dataUrlInput.focus();
+                    }
+                });
+            }
+
+            /**
+             * Zeigt eine Statusmeldung an
+             */
+            function showStatus(message, type = 'info') {
+                statusContainer.innerHTML = `
+                    <div class="status-message ${type}">
+                        ${message}
+                    </div>
+                `;
+                
+                // Automatisch ausblenden nach 5 Sekunden (außer bei Fehlern)
+                if (type !== 'error') {
+                    setTimeout(() => {
+                        statusContainer.innerHTML = '';
+                    }, 5000);
+                }
+            }
+
+            /**
+             * Lädt die Konfiguration
+             */
+            async function loadConfig() {
+                const url = getConfigUrl();
+                if (!url) {
+                    showStatus('Bitte eine Konfiguration auswählen oder URL eingeben', 'warning');
+                    return;
+                }
+
+                try {
+                    formContainer.innerHTML = `
+                        <div class="loading-indicator">
+                            <div class="loading-spinner"></div>
+                            <span>Lade Konfiguration...</span>
+                        </div>
+                    `;
+
+                    currentConfig = await MDParser.loadFromURL(url);
+                    
+                    // API-Client konfigurieren
+                    if (currentConfig.endpoint) {
+                        APIClient.configure({
+                            url: currentConfig.endpoint.url,
+                            method: currentConfig.endpoint.method || 'POST',
+                            contentType: currentConfig.endpoint.contenttype || 'application/json'
+                        });
+                    }
+
+                    // Formular generieren
+                    generateForm();
+                    showStatus('Konfiguration erfolgreich geladen', 'success');
+
+                } catch (error) {
+                    showStatus(`Fehler beim Laden der Konfiguration: ${error.message}`, 'error');
+                    formContainer.innerHTML = `
+                        <div class="status-message error">
+                            Konfiguration konnte nicht geladen werden. 
+                            Bitte prüfen Sie die URL und versuchen Sie es erneut.
+                        </div>
+                    `;
+                }
+            }
+
+            /**
+             * Lädt Daten zum Vorausfüllen
+             */
+            async function loadData() {
+                const url = getDataUrl();
+                if (!url) {
+                    showStatus('Bitte Daten auswählen oder URL eingeben', 'warning');
+                    return;
+                }
+
+                try {
+                    currentData = await MDParser.loadFromURL(url);
+                    
+                    // Formular mit Daten füllen
+                    const form = document.getElementById('amb-form');
+                    if (form && currentData.values) {
+                        FormGenerator.fillForm(form, currentData.values);
+                        showStatus('Daten erfolgreich geladen', 'success');
+                    }
+
+                } catch (error) {
+                    showStatus(`Fehler beim Laden der Daten: ${error.message}`, 'error');
+                }
+            }
+
+            /**
+             * Generiert das Formular
+             */
+            function generateForm() {
+                if (!currentConfig) return;
+
+                const form = FormGenerator.generate(currentConfig, formContainer);
+                
+                // Event Listeners
+                form.addEventListener('submit', handleSubmit);
+                
+                document.getElementById('preview-btn').addEventListener('click', showPreview);
+                document.getElementById('validate-btn').addEventListener('click', validateForm);
+            }
+
+            /**
+             * Zeigt die JSON-Vorschau
+             */
+            function showPreview() {
+                const form = document.getElementById('amb-form');
+                const values = FormGenerator.getFormValues(form);
+                const json = JSONBuilder.build(values, currentConfig?.defaults || {});
+                
+                jsonOutput.innerHTML = JSONBuilder.formatWithHighlighting(json);
+                jsonPreview.style.display = 'block';
+                
+                // Zur Vorschau scrollen
+                jsonPreview.scrollIntoView({ behavior: 'smooth' });
+            }
+
+            /**
+             * Validiert das Formular
+             */
+            function validateForm() {
+                const form = document.getElementById('amb-form');
+                const values = FormGenerator.getFormValues(form);
+                const json = JSONBuilder.build(values, currentConfig?.defaults || {});
+                const result = JSONBuilder.validate(json);
+
+                // Felder markieren
+                document.querySelectorAll('.form-field').forEach(field => {
+                    field.classList.remove('is-valid', 'is-invalid');
+                    field.querySelector('.validation-feedback').textContent = '';
+                });
+
+                if (result.valid) {
+                    showStatus('✓ Validierung erfolgreich! Das JSON ist AMB-konform.', 'success');
+                    validationResults.style.display = 'none';
+                    
+                    // Alle Felder als valide markieren
+                    document.querySelectorAll('.form-field').forEach(field => {
+                        const input = field.querySelector('input, textarea, select');
+                        if (input && input.value) {
+                            field.classList.add('is-valid');
+                        }
+                    });
+                } else {
+                    validationResults.innerHTML = `
+                        <div class="status-message error">
+                            <strong>Validierungsfehler:</strong>
+                            <ul>
+                                ${result.errors.map(e => `<li>${e}</li>`).join('')}
+                            </ul>
+                        </div>
+                    `;
+                    validationResults.style.display = 'block';
+
+                    // Fehlerhafte Felder markieren
+                    result.errors.forEach(error => {
+                        const fieldName = error.split(' ')[0].toLowerCase();
+                        const field = document.querySelector(`[data-field="${fieldName}"]`);
+                        if (field) {
+                            field.classList.add('is-invalid');
+                            field.querySelector('.validation-feedback').textContent = error;
+                        }
+                    });
+                }
+
+                return result.valid;
+            }
+
+            /**
+             * Sendet das Formular
+             */
+            async function handleSubmit(e) {
+                e.preventDefault();
+
+                // Erst validieren
+                if (!validateForm()) {
+                    showStatus('Bitte korrigieren Sie die Validierungsfehler', 'warning');
+                    return;
+                }
+
+                const form = document.getElementById('amb-form');
+                const values = FormGenerator.getFormValues(form);
+                const json = JSONBuilder.build(values, currentConfig?.defaults || {});
+
+                const submitBtn = document.getElementById('submit-btn');
+                const originalText = submitBtn.textContent;
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Sende...';
+
+                try {
+                    const response = await APIClient.send(json);
+                    showStatus('✓ Daten erfolgreich gesendet!', 'success');
+                    console.log('Response:', response);
+
+                } catch (error) {
+                    showStatus(`Fehler beim Senden: ${error.message}`, 'error');
+                    console.error('Send error:', error);
+
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                }
+            }
+
+            /**
+             * URL-Parameter auswerten
+             */
+            function parseURLParams() {
+                const params = new URLSearchParams(window.location.search);
+                
+                if (params.has('config')) {
+                    const configValue = params.get('config');
+                    // Prüfen ob es ein Preset ist
+                    const isPreset = Array.from(configPreset.options).some(opt => opt.value === configValue);
+                    if (isPreset) {
+                        configPreset.value = configValue;
+                    } else {
+                        configPreset.value = 'custom';
+                        configUrlInput.value = configValue;
+                        configUrlInput.style.display = 'block';
+                    }
+                }
+                
+                if (params.has('data')) {
+                    const dataValue = params.get('data');
+                    // Prüfen ob es ein Preset ist
+                    const isPreset = Array.from(dataPreset.options).some(opt => opt.value === dataValue);
+                    if (isPreset) {
+                        dataPreset.value = dataValue;
+                    } else {
+                        dataPreset.value = 'custom';
+                        dataUrlInput.value = dataValue;
+                        dataUrlInput.style.display = 'block';
+                    }
+                }
+
+                // Automatisch laden wenn Parameter vorhanden
+                if (params.has('config')) {
+                    loadConfig().then(() => {
+                        if (params.has('data')) {
+                            loadData();
+                        }
+                    });
+                }
+            }
+
+            // Event Listeners
+            document.getElementById('load-config-btn').addEventListener('click', loadConfig);
+            document.getElementById('load-data-btn').addEventListener('click', loadData);
+
+            // Preset-Toggles initialisieren
+            setupPresetToggles();
+
+            // Initialisierung
+            parseURLParams();
+
+            // Falls keine URL-Parameter, setze Standard-Preset und lade
+            if (!window.location.search) {
+                configPreset.value = 'config/form-config.md';
+                loadConfig();
+            }
+
+        })();
+    </script>
+</body>
+</html>
