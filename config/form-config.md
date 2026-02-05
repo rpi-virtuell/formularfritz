@@ -1,6 +1,6 @@
 # Formular-Konfiguration (AMB Minimal)
 
-Diese Datei definiert die Struktur des Formulars basierend auf den AMB-Pflichtfeldern.
+Diese Datei definiert die Struktur des Formulars für Basis-Metadaten.
 
 ## Endpoint
 
@@ -43,7 +43,7 @@ Diese Datei definiert die Struktur des Formulars basierend auf den AMB-Pflichtfe
 Diese Werte werden automatisch im JSON gesetzt:
 
 ### @context
-- Wert: ["https://w3id.org/kim/amb/context.jsonld", {"@language": "de"}]
+- Wert: https://schema.org/
 
 ### type
-- Wert: ["LearningResource"]
+- Wert: LearningResource

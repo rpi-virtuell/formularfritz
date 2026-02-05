@@ -27,7 +27,7 @@ Nur die absolut notwendigen Pflichtfelder zum schnellen Testen.
 ## Defaults
 
 ### @context
-- Wert: ["https://w3id.org/kim/amb/context.jsonld", {"@language": "de"}]
+- Wert: https://schema.org/
 
 ### type
-- Wert: ["LearningResource"]
+- Wert: LearningResource

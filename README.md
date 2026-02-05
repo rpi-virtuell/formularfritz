@@ -1,4 +1,4 @@
-# AMB Form Editor
+# AMB Form Editor - Formular-Fritz
 
 Ein modulares Formular-System zur Erfassung von Bildungsressourcen-Metadaten nach dem [AMB-Standard](https://dini-ag-kim.github.io/amb/) mit n8n-Integration.
 

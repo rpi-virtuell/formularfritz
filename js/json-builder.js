@@ -1,6 +1,6 @@
 /**
  * JSON Builder Modul
- * Baut AMB-konforme JSON-Objekte aus Formularwerten
+ * Baut JSON-LD Objekte aus Formularwerten
  * 
  * @module JSONBuilder
  */
@@ -8,26 +8,24 @@
 const JSONBuilder = (function() {
     'use strict';
 
-    // Standard AMB-Context
-    const DEFAULT_CONTEXT = [
-        "https://w3id.org/kim/amb/context.jsonld",
-        { "@language": "de" }
-    ];
+    // Standard Context
+    const DEFAULT_CONTEXT = "https://schema.org/";
 
     // Standard-Typ
-    const DEFAULT_TYPE = ["LearningResource"];
+    const DEFAULT_TYPE = "LearningResource";
 
     /**
-     * Baut ein AMB-konformes JSON-Objekt
+     * Baut ein JSON-LD Objekt
      * @param {Object} formValues - Werte aus dem Formular
      * @param {Object} defaults - Default-Werte aus der Config
-     * @returns {Object} AMB-konformes JSON-Objekt
+     * @returns {Object} JSON-LD Objekt
      */
     function build(formValues, defaults = {}) {
         const json = {
             "@context": DEFAULT_CONTEXT,
-            "id": formValues.id || "",
+            "creativeWorkStatus": "Published",
             "type": DEFAULT_TYPE,
+            "id": formValues.id || "",
             "name": formValues.name || ""
         };
 
@@ -40,32 +38,67 @@ const JSONBuilder = (function() {
             json.image = formValues.image.trim();
         }
 
-        // Defaults anwenden (überschreibt Formularwerte nicht)
+        // Keywords als Array (kommagetrennt)
+        if (formValues.keywords && formValues.keywords.trim()) {
+            json.keywords = formValues.keywords
+                .split(',')
+                .map(kw => kw.trim())
+                .filter(kw => kw);
+        }
+
+        // License
+        if (formValues.license && formValues.license.trim()) {
+            json.license = formValues.license.trim();
+        } else {
+            json.license = "https://creativecommons.org/publicdomain/zero/1.0/deed.de";
+        }
+
+        // Learning Resource Type
+        if (formValues.learningResourceType && formValues.learningResourceType.trim()) {
+            json.learningResourceType = [formValues.learningResourceType.trim()];
+        }
+
+        // Educational Level (Array)
+        if (formValues.educationalLevel && formValues.educationalLevel.trim()) {
+            json.educationalLevel = formValues.educationalLevel
+                .split(',')
+                .map(level => level.trim())
+                .filter(level => level);
+        }
+
+        // Creator
+        if (formValues.creator && formValues.creator.trim()) {
+            json.creator = formValues.creator.trim();
+        }
+
+        // Publisher
+        if (formValues.publisher && formValues.publisher.trim()) {
+            json.publisher = formValues.publisher.trim();
+        }
+
+        // Dates
+        if (formValues.dateCreated && formValues.dateCreated.trim()) {
+            json.dateCreated = formValues.dateCreated.trim();
+        }
+
+        if (formValues.datePublished && formValues.datePublished.trim()) {
+            json.datePublished = formValues.datePublished.trim();
+        }
+
+        // Defaults anwenden (nur wenn in Config überschrieben)
         if (defaults['@context']?.wert) {
-            try {
-                json['@context'] = typeof defaults['@context'].wert === 'string' 
-                    ? JSON.parse(defaults['@context'].wert)
-                    : defaults['@context'].wert;
-            } catch (e) {
-                // Behalte Default
-            }
+            json['@context'] = defaults['@context'].wert;
         }
 
         if (defaults.type?.wert) {
-            try {
-                json.type = typeof defaults.type.wert === 'string'
-                    ? JSON.parse(defaults.type.wert)
-                    : defaults.type.wert;
-            } catch (e) {
-                // Behalte Default
-            }
+            json.type = defaults.type.wert;
         }
 
         return json;
     }
 
     /**
-     * Validiert ein JSON-Objekt gegen AMB-Pflichtfelder
+     * Validiert ein JSON-Objekt gegen Pflichtfelder
      * @param {Object} json - Das zu validierende JSON-Objekt
      * @returns {Object} Validierungsergebnis { valid: boolean, errors: string[] }
      */
@@ -75,10 +108,8 @@ const JSONBuilder = (function() {
         // Pflichtfeld: @context
         if (!json['@context']) {
             errors.push('@context ist ein Pflichtfeld');
-        } else if (!Array.isArray(json['@context'])) {
-            errors.push('@context muss ein Array sein');
-        } else if (!json['@context'].includes('https://w3id.org/kim/amb/context.jsonld')) {
-            errors.push('@context muss "https://w3id.org/kim/amb/context.jsonld" enthalten');
+        } else if (typeof json['@context'] !== 'string') {
+            errors.push('@context muss ein String sein');
         }
 
         // Pflichtfeld: id
@@ -91,10 +122,8 @@ const JSONBuilder = (function() {
         // Pflichtfeld: type
         if (!json.type) {
             errors.push('type ist ein Pflichtfeld');
-        } else if (!Array.isArray(json.type)) {
-            errors.push('type muss ein Array sein');
-        } else if (!json.type.includes('LearningResource')) {
-            errors.push('type muss "LearningResource" enthalten');
+        } else if (typeof json.type !== 'string') {
+            errors.push('type muss ein String sein');
         }
 
         // Pflichtfeld: name

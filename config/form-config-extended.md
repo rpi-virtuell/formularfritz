@@ -45,6 +45,27 @@ Diese erweiterte Konfiguration enthält mehr Felder für umfassendere Metadaten.
 - Placeholder: Reformation, Luther, Kirche
 - Hilfe: Kommagetrennte Schlagworte zur Beschreibung des Inhalts.
 
+### license
+- Label: Lizenz
+- Typ: url
+- Pflicht: nein
+- Placeholder: https://creativecommons.org/licenses/by/4.0/deed.de
+- Hilfe: URL zur Lizenz der Ressource.
+
+### learningResourceType
+- Label: Ressourcentyp
+- Typ: select
+- Pflicht: nein
+- Options: https://w3id.org/kim/hcrt/lesson_plan|Lesson Plan, https://w3id.org/kim/hcrt/text|Text, https://w3id.org/kim/hcrt/video|Video, https://w3id.org/kim/hcrt/interactive|Interaktiv
+- Hilfe: Art der Bildungsressource.
+
+### educationalLevel
+- Label: Bildungsstufen
+- Typ: text
+- Pflicht: nein
+- Placeholder: https://w3id.org/kim/educationalLevel/level_2, https://w3id.org/kim/educationalLevel/level_A
+- Hilfe: Kommagetrennte URIs für Bildungsstufen.
+
 ### inLanguage
 - Label: Sprache
 - Typ: select
@@ -83,7 +104,7 @@ Diese erweiterte Konfiguration enthält mehr Felder für umfassendere Metadaten.
 Diese Werte werden automatisch im JSON gesetzt:
 
 ### @context
-- Wert: ["https://w3id.org/kim/amb/context.jsonld", {"@language": "de"}]
+- Wert: https://schema.org/
 
 ### type
-- Wert: ["LearningResource"]
+- Wert: LearningResource
